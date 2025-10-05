@@ -12,7 +12,7 @@ This programm comes with ABSOLUTELY NO WARRANTY!
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
- 
+
 import sys
 import zipfile
 import requests
@@ -79,7 +79,7 @@ class StoreBackend:
                 stores.append((store.get("url"), store.get("branch")))
 
         return stores
-    
+
     def get_custom_plugins(self) -> list[tuple[str, str]]:
         settings = gl.settings_manager.get_app_settings()
 
@@ -89,7 +89,7 @@ class StoreBackend:
                 plugins.append((plugin.get("url"), plugin.get("branch")))
 
         return plugins
-    
+
     async def get_official_store_branch(self) -> str:
         if self.official_store_branch_cache is not None:
             return self.official_store_branch_cache
@@ -109,7 +109,7 @@ class StoreBackend:
         except requests.exceptions.ConnectionError as e:
             log.error(e)
             return NoConnectionError()
-    
+
     def build_url(self, repo_url: str, file_path: str, branch_name: str = "main") -> str:
         """
         Replaces the domain in the given repository URL with "raw.githubusercontent.com" and constructs the URL for the specified file path in the repository's branch.
@@ -166,10 +166,10 @@ class StoreBackend:
 
         if isinstance(answer, NoConnectionError):
             return answer
-        
+
         if answer is None:
             return
-        
+
         with self.store_cache.open_cache_file(url=repo_url, branch=branch_name, path=file_path, mode=f"w{byte_suffix}") as f:
             if answer is None:
                 return
@@ -182,26 +182,26 @@ class StoreBackend:
             return answer.text
         elif data_type == "content":
             return answer.content
-        
+
     async def get_last_commit(self, repo_url: str, branch_name: str = "main") -> str:
         url = f"https://api.github.com/repos/{self.get_user_name(repo_url)}/{self.get_repo_name(repo_url)}/commits?sha={branch_name}&per_page=1"
         response = requests.get(url)
 
         if response.status_code != 200:
             return
-        
+
         commits = response.json()
         if len(commits) == 0:
             return
         return commits[0].get("sha")
-    
+
     async def get_official_authors(self) -> list:
         authors_json = await self.get_remote_file(self.STORE_REPO_URL, "OfficialAuthors.json", self.STORE_BRANCH, force_refetch=True)
         if isinstance(authors_json, NoConnectionError):
             return authors_json
         authors_json = json.loads(authors_json)
         return authors_json
-    
+
     async def fetch_and_parse_store_json(self, url: str, filename: str, branch: str, n_stores_with_errors: int = 0):
         try:
             store_file_json = await self.get_remote_file(url, filename, branch, force_refetch=True)
@@ -252,7 +252,7 @@ class StoreBackend:
 
     async def get_all_wallpapers(self) -> int:
         return await self.process_store_data("Wallpapers.json", self.prepare_wallpaper, None, WallpaperData)
-    
+
     async def get_manifest(self, url:str, commit:str) -> dict:
         # url = self.build_url(url, "manifest.json", commit)
         manifest = await self.get_remote_file(url, "manifest.json", commit)
@@ -261,7 +261,7 @@ class StoreBackend:
         if manifest is None:
             return
         return json.loads(manifest)
-    
+
     def remove_old_manifest_cache(self, url:str, commit_sha:str):
         for cached_url in list(self.manifest_cache.keys()):
             if self.get_repo_name(cached_url) == self.get_repo_name(url) and not commit_sha in cached_url:
@@ -273,12 +273,12 @@ class StoreBackend:
         result = await self.get_remote_file(url, "attribution.json", commit)
         if isinstance(result, NoConnectionError):
             return result
-        
+
         try:
             return json.loads(result)
         except (json.decoder.JSONDecodeError, TypeError) as e:
             return {}
-    
+
     def remove_old_attribution_cache(self, url:str, commit_sha:str):
         for cached_url in list(self.attribution_cache.keys()):
             if self.get_repo_name(cached_url) == self.get_repo_name(url) and not commit_sha in cached_url:
@@ -319,7 +319,7 @@ class StoreBackend:
             image = await self.get_web_image(url, thumbnail_path, commit or branch)
             if isinstance(manifest, NoConnectionError):
                 return image
-        
+
         attribution = await self.get_attribution(url, commit or branch)
         if isinstance(attribution, NoConnectionError):
             return attribution
@@ -364,30 +364,30 @@ class StoreBackend:
             is_compatible=compatible,
             verified=verified
         )
-    
+
     def get_current_git_commit_hash_without_git(self, repo_path: str) -> str:
         try:
             # Construct the path to the FETCH_HEAD file
             fetch_head_path = os.path.join(repo_path, '.git', 'FETCH_HEAD')
-            
+
             # Read the contents of the FETCH_HEAD file
             with open(fetch_head_path, 'r') as file:
                 lines = file.readlines()
-                
+
                 # The first line contains the latest commit hash
                 if lines:
                     latest_commit_hash = lines[0].split()[0]
                     return latest_commit_hash
                 else:
                     raise ValueError("FETCH_HEAD file is empty")
-                    
+
         except Exception as e:
             raise RuntimeError(f"Unable to retrieve git commit hash: {e}")
-    
+
     async def get_local_sha(self, git_dir: str):
         if not os.path.exists(git_dir):
             return
-        
+
         if os.path.exists(os.path.join(git_dir, ".git")):
             try:
                 sha = self.get_current_git_commit_hash_without_git(git_dir)
@@ -399,10 +399,10 @@ class StoreBackend:
         version_file_path = os.path.join(git_dir, "VERSION")
         if not os.path.exists(version_file_path):
             return ""
-        
+
         with open(version_file_path, "r") as f:
             return f.read().strip()
-    
+
     async def prepare_icon(self, icon, include_image: bool = True, verified: bool = False):
         if not include_image:
             raise NotImplementedError("Not yet implemented") #TODO
@@ -439,7 +439,7 @@ class StoreBackend:
         stargazers = await self.get_stargazers(url)
         if isinstance(stargazers, NoConnectionError):
             return stargazers
-        
+
         translated_description = gl.lm.get_custom_translation(manifest.get("descriptions", {}))
         translated_short_description = gl.lm.get_custom_translation(manifest.get("short-descriptions", {}))
 
@@ -475,7 +475,7 @@ class StoreBackend:
             verified=verified
         )
 
-    
+
     async def prepare_wallpaper(self, wallpaper, include_image: bool = True, verified: bool = False):
         if not include_image:
             raise NotImplementedError("Not yet implemented") #TODO
@@ -506,7 +506,7 @@ class StoreBackend:
         if isinstance(attribution, NoConnectionError):
             return attribution
         attribution = attribution.get("generic", {}) #TODO: Choose correct attribution
-        
+
         author = self.get_user_name(url)
 
         translated_description = gl.lm.get_custom_translation(manifest.get("descriptions", {}))
@@ -555,7 +555,7 @@ class StoreBackend:
             return Image.open(BytesIO(result))
         except:
             return
-    
+
     async def get_stargazers(self, repo_url: str) -> int:
         "Deactivated for now because of rate limits"
         return 0
@@ -565,7 +565,7 @@ class StoreBackend:
         url = f"https://api.github.com/repos/{user_name}/{repo_name}"
         api_answer = await self.make_api_call(url)
         return api_answer["stargazers_count"]
-    
+
     async def make_api_call(self, api_call_url:str) -> dict:
         async def call():
             log.trace(f"Making API call: {api_call_url}")
@@ -589,14 +589,14 @@ class StoreBackend:
 
         if t_delta > 3600:
             return await call()
-        
+
         # Cached
         return self.api_cache[api_call_url]["answer"]
 
     def get_user_name(self, repo_url:str) -> str:
         splitted =  repo_url.split("/")
         return splitted[splitted.index("github.com")+1]
-    
+
     def get_repo_name(self, repo_url:str) -> str:
         github_split = repo_url.split("github")
         if len(github_split) < 2:
@@ -605,17 +605,17 @@ class StoreBackend:
         if len(split) < 3:
             return
         return split[2]
-    
+
     def get_all_plugins(self, include_images: bool = True) -> list[PluginData]:
         return asyncio.run(self.get_all_plugins_async(include_images))
-    
+
     def get_newest_compatible_version(self, available_versions: list[str]) -> str:
         if gl.exact_app_version_check:
             if gl.app_version in available_versions:
                 return gl.app_version
             else:
                 return None
-            
+
         current_major = version.parse(gl.app_version).major
 
         compatible_versions = [v for v in available_versions if version.parse(v).major == current_major]
@@ -626,20 +626,20 @@ class StoreBackend:
             return compatible_versions[max_index]
         else:
             return None
-        
+
     def get_newest_version(self, available_versions: list[str]) -> str:
         parsed_versions = [version.parse(v) for v in available_versions]
-        
+
         max_index = parsed_versions.index(max(parsed_versions))
         return available_versions[max_index]
 
     ## Install
     async def subp_call(self, args):
         return subprocess.call(args)
-    
+
     async def os_sys(self, args):
         return os.system(args)
-    
+
     def get_main_folder_of_zip(self, zip_path: str) -> str:
         extracted_folder_name = None
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -649,7 +649,7 @@ class StoreBackend:
                     continue
                 if item.count("/") > 1:
                     continue
-                
+
                 if extracted_folder_name is not None:
                     log.error("Multiple folders in zip")
                     return 400
@@ -659,9 +659,9 @@ class StoreBackend:
         if extracted_folder_name is None:
             log.error("Could not find extracted folder name")
             return 400
-        
+
         return extracted_folder_name
-    
+
     async def download_repo(self, repo_url:str, directory:str, commit_sha:str = None, branch_name:str = None):
         if not is_flatpak() and gl.argparser.parse_args().devel:
             await self.clone_repo(repo_url, directory, commit_sha, branch_name)
@@ -675,7 +675,7 @@ class StoreBackend:
             # Used to write the version
             sha = self.get_last_commit(repo_url, branch_name)
         zip_url = f"https://github.com/{username}/{projectname}/archive/{sha}.zip"
-        
+
         # Download
         try:
             # Create cache dir
@@ -684,7 +684,7 @@ class StoreBackend:
         except TypeError as e:
             log.error(e)
             return NoConnectionError()
-        
+
         ## Extract
         if os.path.exists(os.path.join(gl.DATA_PATH, "cache", f"{projectname}-{sha}")):
             shutil.rmtree(os.path.join(gl.DATA_PATH, "cache", f"{projectname}-{sha}"))
@@ -693,7 +693,7 @@ class StoreBackend:
 
         ## Why - because github is not case sensitive for the urls, so the casing of the zip file might be different than the one of the contained folder
         extracted_folder_name = self.get_main_folder_of_zip(os.path.join(gl.DATA_PATH, "cache", f"{projectname}-{sha}.zip"))
-        
+
         extracted_folder = os.path.join(gl.DATA_PATH, "cache", extracted_folder_name)
 
         # Remove destination folder
@@ -711,14 +711,14 @@ class StoreBackend:
 
         os.remove(os.path.join(gl.DATA_PATH, "cache", f"{projectname}-{sha}.zip"))
         shutil.rmtree(extracted_folder)
-        
+
         ## Write version
         path = os.path.join(directory, "VERSION")
         with open(path, "w") as f:
             f.write(sha)
-        
+
         return 200
-    
+
     async def clone_repo(self, repo_url:str, local_path:str, commit_sha:str = None, branch_name:str = None):
         # if branch_name == None and commit_sha == None:
             # Set branch_name to main branch's name
@@ -733,7 +733,7 @@ class StoreBackend:
         if shutil.which("git") is None:
             log.error("Git is not installed on this system. Please install it.")
             return 404
-        
+
         # Remove folder if it already exists
         shutil.rmtree(local_path, ignore_errors=True)
 
@@ -757,12 +757,12 @@ class StoreBackend:
         if commit_sha is not None:
             await self.os_sys(f"cd '{local_path}' && git reset --hard {commit_sha}")
             return
-        
+
         if branch_name is not None:
             await self.os_sys(f"cd '{local_path}' && git switch {branch_name}")
             return
-        
-        
+
+
     async def install_plugin(self, plugin_data:PluginData, auto_update: bool = False):
         url = plugin_data.github
 
@@ -770,17 +770,21 @@ class StoreBackend:
 
         response = await self.download_repo(repo_url=url, directory=local_path, commit_sha=plugin_data.commit_sha, branch_name=plugin_data.branch)
 
+        use_uv = True
+
         # Run install script if present. Make sure to use python binary used to run this process to not break venv dependency installations
         if os.path.isfile(os.path.join(local_path, "__install__.py")):
             subprocess.run(f"{sys.executable} {os.path.join(local_path, '__install__.py')}", shell=True, start_new_session=True)
 
+        pip_executable = "uv pip" if use_uv else f"{sys.executable} -m pip"
+
         # Install requirements from requirements.txt
         if os.path.isfile(os.path.join(local_path, "requirements.txt")):
-            subprocess.run(f"{sys.executable} -m pip install -r {os.path.join(local_path, 'requirements.txt')}", shell=True, start_new_session=True)
+            subprocess.run(f"{pip_executable} install -r {os.path.join(local_path, 'requirements.txt')}", shell=True, start_new_session=True)
 
         if response == 404:
             return 404
-        
+
         # Update plugin manager
         gl.plugin_manager.load_plugins()
         gl.plugin_manager.init_plugins()
@@ -804,7 +808,7 @@ class StoreBackend:
         gl.signal_manager.trigger_signal(Signals.PluginInstall, plugin_data.plugin_id)
 
         log.success(f"Plugin {plugin_data.plugin_id} installed successfully under: {local_path} with sha: {plugin_data.commit_sha}")
-        
+
     def uninstall_plugin(self, plugin_id:str, remove_from_pages:bool = False, remove_files:bool = True) -> bool:
         ## 1. Remove all action objects in all pages
         for deck_controller in gl.deck_manager.deck_controller:
@@ -830,7 +834,7 @@ class StoreBackend:
             return
         if remove_files:
             plugin.on_uninstall()
-            
+
             ## 3. Remove plugin folder
             if os.path.islink(plugin.PATH):
                 symlink_target = os.readlink(plugin.PATH)
@@ -898,7 +902,7 @@ class StoreBackend:
         for plugin in plugins:
             if plugin.plugin_id == plugin_id:
                 return plugin
-            
+
     ## Updates
     async def get_plugins_to_update(self):
         plugins =  await self.get_all_plugins_async()
@@ -915,7 +919,7 @@ class StoreBackend:
                 plugins_to_update.append(plugin)
 
         return plugins_to_update
-    
+
     async def update_all_plugins(self) -> int:
         """
         Returns number of updated plugins
@@ -929,7 +933,7 @@ class StoreBackend:
             except Exception as e:
                 log.error(e)
             await self.install_plugin(plugin)
-        
+
         return len(plugins_to_update)
 
     async def get_icons_to_update(self):
@@ -945,9 +949,9 @@ class StoreBackend:
                 continue
             if icon.local_sha != icon.commit_sha:
                 icons_to_update.append(icon)
-                
+
         return icons_to_update
-    
+
     async def update_all_icons(self) -> int:
         """
         Returns number of updated icons
@@ -959,7 +963,7 @@ class StoreBackend:
             await self.install_icon(icon)
 
         return len(icons_to_update)
-    
+
     async def get_wallpapers_to_update(self):
         wallpapers = await self.get_all_wallpapers()
         if isinstance(wallpapers, NoConnectionError):
@@ -975,7 +979,7 @@ class StoreBackend:
                 wallpapers_to_update.append(wallpaper)
 
         return wallpapers_to_update
-    
+
     async def update_all_wallpapers(self) -> int:
         """
         Returns number of updated wallpapers
